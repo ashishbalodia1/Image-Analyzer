@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .loading {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        pre {
+            background: #1e293b;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .info {
+            background: #e0e7ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 API Connection Test</h1>
+        
+        <div class="info">
+            <strong>Testing API at:</strong> <code>http://localhost:3000</code>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 1: Health Check</h3>
+            <div id="health-status" class="status loading">⏳ Not tested yet</div>
+            <button onclick="testHealth()">Test Health Endpoint</button>
+            <pre id="health-response"></pre>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 2: Categories</h3>
+            <div id="categories-status" class="status loading">⏳ Not tested yet</div>
+            <button onclick="testCategories()">Test Categories Endpoint</button>
+            <pre id="categories-response"></pre>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 3: CORS</h3>
+            <div id="cors-status" class="status loading">⏳ Not tested yet</div>
+            <button onclick="testCORS()">Test CORS Headers</button>
+            <pre id="cors-response"></pre>
+        </div>
+
+        <div class="test-section">
+            <h3>Test All</h3>
+            <button onclick="testAll()" style="width: 100%; padding: 15px;">🚀 Run All Tests</button>
+        </div>
+
+        <div class="info">
+            <strong>💡 Tip:</strong> Open Developer Tools (F12) to see detailed console logs
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+
+        async function testHealth() {
+            const statusDiv = document.getElementById('health-status');
+            const responseDiv = document.getElementById('health-response');
+            
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '⏳ Testing...';
+            responseDiv.textContent = '';
+
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                const data = await response.json();
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ Success! API is responding';
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+                console.log('✅ Health Check:', data);
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ Failed to connect to API';
+                responseDiv.textContent = `Error: ${error.message}`;
+                
+                console.error('❌ Health Check Failed:', error);
+            }
+        }
+
+        async function testCategories() {
+            const statusDiv = document.getElementById('categories-status');
+            const responseDiv = document.getElementById('categories-response');
+            
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '⏳ Testing...';
+            responseDiv.textContent = '';
+
+            try {
+                const response = await fetch(`${API_URL}/api/categories`);
+                const data = await response.json();
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✅ Success! Loaded ${data.count} categories`;
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+                console.log('✅ Categories:', data);
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ Failed to load categories';
+                responseDiv.textContent = `Error: ${error.message}`;
+                
+                console.error('❌ Categories Failed:', error);
+            }
+        }
+
+        async function testCORS() {
+            const statusDiv = document.getElementById('cors-status');
+            const responseDiv = document.getElementById('cors-response');
+            
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '⏳ Testing...';
+            responseDiv.textContent = '';
+
+            try {
+                const response = await fetch(`${API_URL}/api/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': window.location.origin
+                    }
+                });
+                
+                const corsHeader = response.headers.get('Access-Control-Allow-Origin');
+                
+                if (corsHeader) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = '✅ CORS is properly configured';
+                    responseDiv.textContent = `Access-Control-Allow-Origin: ${corsHeader}`;
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = '⚠️ CORS headers not found';
+                    responseDiv.textContent = 'No CORS headers in response';
+                }
+                
+                console.log('✅ CORS Test:', corsHeader);
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ CORS test failed';
+                responseDiv.textContent = `Error: ${error.message}`;
+                
+                console.error('❌ CORS Test Failed:', error);
+            }
+        }
+
+        async function testAll() {
+            console.log('🚀 Running all tests...');
+            await testHealth();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testCategories();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testCORS();
+            console.log('✅ All tests completed!');
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            console.log('🔍 API Connection Test Page Loaded');
+            console.log('API URL:', API_URL);
+        });
+    </script>
+</body>
+</html>

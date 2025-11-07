@@ -1,0 +1,11 @@
+node_modules/
+.env
+.DS_Store
+uploads/
+temp/
+*.log
+training_data/
+models/saved_model/
+.vercel
+dist/
+build/

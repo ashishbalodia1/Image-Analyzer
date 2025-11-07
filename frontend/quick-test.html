@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Connection Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #1f2937; margin-bottom: 10px; }
+        .subtitle { color: #6b7280; margin-bottom: 30px; }
+        .info {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #991b1b;
+        }
+        .loading {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #92400e;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button:hover { opacity: 0.9; }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        pre {
+            background: #1e293b;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔍 Quick Connection Test</h1>
+        <p class="subtitle">Testing API connection with auto-detected URL</p>
+        
+        <div class="info">
+            <strong>Current Page URL:</strong><br>
+            <code id="page-url"></code>
+        </div>
+        
+        <div class="info">
+            <strong>Detected API URL:</strong><br>
+            <code id="api-url"></code>
+        </div>
+        
+        <div class="info">
+            <strong>Environment:</strong><br>
+            <code id="environment"></code>
+        </div>
+        
+        <div id="result" class="hidden"></div>
+        
+        <button onclick="testConnection()">🚀 Test Connection</button>
+        
+        <div id="details" class="hidden">
+            <h3 style="margin-top: 30px;">Response Details:</h3>
+            <pre id="response-data"></pre>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 15px; background: #f9fafb; border-radius: 8px;">
+            <h4 style="margin-bottom: 10px;">💡 How It Works:</h4>
+            <ul style="padding-left: 20px; color: #6b7280;">
+                <li>✅ <strong>Codespaces:</strong> Auto-detects and uses forwarded port 3000</li>
+                <li>✅ <strong>Localhost:</strong> Uses http://localhost:3000</li>
+                <li>✅ <strong>Production:</strong> Uses deployed API URL</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Auto-detect API URL based on environment
+        function getApiUrl() {
+            const hostname = window.location.hostname;
+            
+            // If accessing via Codespaces forwarded URL
+            if (hostname.includes('app.github.dev')) {
+                const apiUrl = window.location.origin.replace('-8000.app.github.dev', '-3000.app.github.dev');
+                return {
+                    url: apiUrl,
+                    env: 'GitHub Codespaces (Port Forwarding)'
+                };
+            }
+            
+            // If accessing via localhost
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return {
+                    url: 'http://localhost:3000',
+                    env: 'Local Development'
+                };
+            }
+            
+            // For production deployment
+            return {
+                url: window.location.origin,
+                env: 'Production Deployment'
+            };
+        }
+
+        const apiConfig = getApiUrl();
+        const API_URL = apiConfig.url;
+
+        // Display info
+        document.getElementById('page-url').textContent = window.location.href;
+        document.getElementById('api-url').textContent = API_URL;
+        document.getElementById('environment').textContent = apiConfig.env;
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            const detailsDiv = document.getElementById('details');
+            const responseData = document.getElementById('response-data');
+            
+            // Show loading
+            resultDiv.className = 'loading';
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = '⏳ <strong>Testing connection...</strong><br>Attempting to reach: ' + API_URL + '/api/health';
+            detailsDiv.classList.add('hidden');
+            
+            try {
+                console.log('🔍 Testing connection to:', API_URL + '/api/health');
+                
+                const response = await fetch(API_URL + '/api/health');
+                
+                console.log('📡 Response received:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ Data:', data);
+                
+                // Show success
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = `
+                    ✅ <strong>Connection Successful!</strong><br>
+                    Status: ${data.status}<br>
+                    Categories: ${data.categories}<br>
+                    Model Loaded: ${data.model.loaded ? 'Yes ✅' : 'No (needs training) ⏳'}
+                `;
+                
+                // Show response data
+                responseData.textContent = JSON.stringify(data, null, 2);
+                detailsDiv.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('❌ Connection failed:', error);
+                
+                // Show error
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    ❌ <strong>Connection Failed!</strong><br>
+                    Error: ${error.message}<br><br>
+                    <strong>Troubleshooting:</strong><br>
+                    1. Make sure backend server is running on port 3000<br>
+                    2. In VS Code, check "Ports" tab - port 3000 should be forwarded<br>
+                    3. Try refreshing this page (Ctrl+Shift+R)<br>
+                    4. Check browser console (F12) for more details
+                `;
+            }
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            console.log('🌐 Page loaded');
+            console.log('📍 Environment:', apiConfig.env);
+            console.log('🔗 API URL:', API_URL);
+            
+            // Auto-test after 1 second
+            setTimeout(() => {
+                console.log('🚀 Auto-testing connection...');
+                testConnection();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
