@@ -1,0 +1,29 @@
+{
+  "categories": [
+    "soil_pollution",
+    "water_pollution",
+    "water_sewage_pollution",
+    "air_pollution",
+    "door_to_door_cleaning",
+    "mohallah_cleaning",
+    "road_maintenance",
+    "infrastructure",
+    "others"
+  ],
+  "trainedAt": "2025-11-08T01:01:15.142Z",
+  "config": {
+    "imageSize": 224,
+    "confidenceThreshold": 0.6,
+    "maxFileSize": 10485760,
+    "allowedMimeTypes": [
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "image/webp"
+    ],
+    "modelPath": "./models/city-guardian-classifier",
+    "epochs": 50,
+    "batchSize": 32,
+    "learningRate": 0.001
+  }
+}
