@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image Upload - City Guardian</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .upload-box {
+            border: 2px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-box:hover {
+            background: #f8f9ff;
+            border-color: #764ba2;
+        }
+        
+        .upload-box.dragging {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .category-result {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .confidence {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .confidence-bar {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        
+        .preview {
+            max-width: 100%;
+            margin-top: 20px;
+            border-radius: 10px;
+        }
+        
+        .logs {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏙️ City Guardian - Test Image Upload</h1>
+        <p style="color: #666; margin-bottom: 20px;">Upload an image to test the AI classification</p>
+        
+        <div class="status info" id="apiStatus">
+            <strong>🔍 Checking API connection...</strong>
+            <div id="apiInfo"></div>
+        </div>
+        
+        <div class="upload-box" id="uploadBox">
+            <div style="font-size: 48px; margin-bottom: 15px;">📸</div>
+            <h3>Click or Drag Image Here</h3>
+            <p style="color: #999; margin-top: 10px;">JPEG, PNG, or WebP (max 10MB)</p>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+        
+        <div id="preview"></div>
+        
+        <button id="uploadBtn" disabled>Upload & Analyze</button>
+        
+        <div class="result" id="result"></div>
+        
+        <div class="logs" id="logs"></div>
+    </div>
+
+    <script>
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const preview = document.getElementById('preview');
+        const result = document.getElementById('result');
+        const apiStatus = document.getElementById('apiStatus');
+        const apiInfo = document.getElementById('apiInfo');
+        const logs = document.getElementById('logs');
+        
+        let selectedFile = null;
+        let API_URL = '';
+        
+        // Logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#00ff00';
+            logs.innerHTML += `<div class="log-entry" style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+        
+        // Detect API URL
+        function getApiUrl() {
+            const hostname = window.location.hostname;
+            log(`Detecting API URL for hostname: ${hostname}`);
+            
+            if (hostname.includes('app.github.dev')) {
+                const parts = window.location.hostname.split('-');
+                const baseUrl = parts.slice(0, -1).join('-') + '-3000.app.github.dev';
+                API_URL = `https://${baseUrl}`;
+                log(`Codespaces detected: ${API_URL}`, 'info');
+            } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                API_URL = 'http://localhost:3000';
+                log(`Localhost detected: ${API_URL}`, 'info');
+            } else {
+                API_URL = window.location.origin;
+                log(`Production detected: ${API_URL}`, 'info');
+            }
+            
+            return API_URL;
+        }
+        
+        // Check API health
+        async function checkAPI() {
+            log('Checking API health...');
+            API_URL = getApiUrl();
+            
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    apiStatus.className = 'status success';
+                    apiStatus.innerHTML = `
+                        <strong>✅ API Connected Successfully!</strong><br>
+                        <small>URL: ${API_URL}</small><br>
+                        <small>Model: ${data.model.loaded ? 'Loaded' : 'Not Loaded'}</small><br>
+                        <small>Categories: ${data.categories}</small>
+                    `;
+                    log('API health check passed!', 'success');
+                    return true;
+                } else {
+                    throw new Error('API not healthy');
+                }
+            } catch (error) {
+                log(`API error: ${error.message}`, 'error');
+                apiStatus.className = 'status error';
+                apiStatus.innerHTML = `
+                    <strong>❌ Cannot Connect to API</strong><br>
+                    <small>URL: ${API_URL}</small><br>
+                    <small>Error: ${error.message}</small><br>
+                    <small>Make sure backend server is running on port 3000</small>
+                `;
+                return false;
+            }
+        }
+        
+        // Handle file selection
+        uploadBox.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                log(`File selected: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+                showPreview(file);
+                uploadBtn.disabled = false;
+            }
+        });
+        
+        // Drag and drop
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('dragging');
+        });
+        
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragging');
+        });
+        
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('dragging');
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                selectedFile = file;
+                fileInput.files = e.dataTransfer.files;
+                log(`File dropped: ${file.name}`);
+                showPreview(file);
+                uploadBtn.disabled = false;
+            }
+        });
+        
+        // Show image preview
+        function showPreview(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.innerHTML = `<img src="${e.target.result}" class="preview" alt="Preview">`;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Upload and analyze
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Analyzing...';
+            result.classList.remove('show');
+            
+            log('Starting image analysis...');
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                
+                log(`Sending POST request to ${API_URL}/api/analyze`);
+                const response = await fetch(`${API_URL}/api/analyze`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                log(`Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                log('Analysis complete!', 'success');
+                log(`Result: ${JSON.stringify(data.result)}`, 'success');
+                
+                displayResult(data);
+                
+            } catch (error) {
+                log(`Upload error: ${error.message}`, 'error');
+                result.innerHTML = `
+                    <div class="status error">
+                        <strong>❌ Analysis Failed</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+                result.classList.add('show');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload & Analyze';
+            }
+        });
+        
+        // Display result
+        function displayResult(data) {
+            const { result: prediction, alternativePredictions, processingTime } = data;
+            
+            let html = `
+                <h3>🎯 Classification Result</h3>
+                <div class="category-result">
+                    <h2 style="color: #667eea;">${prediction.label}</h2>
+                    <p style="color: #666; margin: 10px 0;">${prediction.description}</p>
+                    <div class="confidence">
+                        <span><strong>Confidence:</strong></span>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${prediction.confidence}"></div>
+                        </div>
+                        <span><strong>${prediction.confidence}</strong></span>
+                    </div>
+                </div>
+            `;
+            
+            if (alternativePredictions && alternativePredictions.length > 0) {
+                html += '<h4 style="margin-top: 20px; color: #666;">Alternative Predictions:</h4>';
+                alternativePredictions.slice(0, 3).forEach(alt => {
+                    html += `
+                        <div class="category-result" style="background: #f8f9ff;">
+                            <strong>${alt.label}</strong>
+                            <div class="confidence">
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" style="width: ${alt.confidence}"></div>
+                                </div>
+                                <span>${alt.confidence}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `<p style="margin-top: 20px; color: #999; text-align: center;">
+                Processing time: ${processingTime}
+            </p>`;
+            
+            result.innerHTML = html;
+            result.classList.add('show');
+        }
+        
+        // Initialize
+        checkAPI();
+    </script>
+</body>
+</html>

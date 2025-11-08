@@ -4,6 +4,7 @@
  */
 
 const tf = require('@tensorflow/tfjs-node');
+const mobilenet = require('@tensorflow-models/mobilenet');
 const fs = require('fs').promises;
 const path = require('path');
 const { CATEGORIES, CATEGORY_LABELS, MODEL_CONFIG } = require('../config/categories');
@@ -11,11 +12,12 @@ const { CATEGORIES, CATEGORY_LABELS, MODEL_CONFIG } = require('../config/categor
 class ImageClassifier {
   constructor() {
     this.model = null;
+    this.baseModel = null;
     this.isReady = false;
   }
 
   /**
-   * Load the trained model
+   * Load the trained model and MobileNet base model
    */
   async loadModel() {
     try {
@@ -30,6 +32,14 @@ class ImageClassifier {
         return false;
       }
 
+      // Load MobileNet for feature extraction
+      console.log('📦 Loading MobileNet for feature extraction...');
+      this.baseModel = await mobilenet.load({
+        version: 2,
+        alpha: 1.0
+      });
+
+      // Load trained classifier
       this.model = await tf.loadLayersModel(`file://${modelPath}`);
       this.isReady = true;
       console.log('✅ Model loaded successfully');
@@ -44,20 +54,31 @@ class ImageClassifier {
    * Classify an image
    */
   async classify(preprocessedImage) {
-    if (!this.isReady || !this.model) {
+    if (!this.isReady || !this.model || !this.baseModel) {
       throw new Error('Model not loaded. Please train the model first.');
     }
 
     try {
       // Create tensor from preprocessed image
-      const tensor = tf.tensor(preprocessedImage.data, preprocessedImage.shape);
+      const imageTensor = tf.tensor(preprocessedImage.data, preprocessedImage.shape);
+      
+      // Extract features using MobileNet
+      const activation = this.baseModel.infer(imageTensor, 'conv_preds');
+      const featureTensor = activation.flatten();
+      const features = await featureTensor.array();
+      
+      // Create features tensor for classification
+      const featuresTensor2D = tf.tensor2d([features]);
       
       // Run prediction
-      const predictions = await this.model.predict(tensor);
+      const predictions = await this.model.predict(featuresTensor2D);
       const predictionData = await predictions.data();
       
       // Clean up tensors
-      tensor.dispose();
+      imageTensor.dispose();
+      activation.dispose();
+      featureTensor.dispose();
+      featuresTensor2D.dispose();
       predictions.dispose();
       
       // Map predictions to categories
